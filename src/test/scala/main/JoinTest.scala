@@ -1,5 +1,8 @@
 package main
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.catalyst.plans.Cross
+
 class JoinTest extends SparkTest {
 
   import testImplicits._
@@ -22,16 +25,31 @@ class JoinTest extends SparkTest {
       (6, 7, 50.0)
     ).toDF("orderId", "customerId", "amount")
 
-    def genders = Seq(
+    def genders: DataFrame = Seq(
       ("M", "Male"),
       ("F", "Female"),
       ("O", "Other")
     ).toDF("genderCode", "gender")
   }
 
+  import TestData._
+
   test("orders with customer names and genders") {
 
-    val actualDF = spark.emptyDataFrame // Replace this with actual code to pass tests
+    val actualDF = customers.join(orders, "customerId").join(genders, "genderCode")
+    //alternative using select query
+//    val actualDF = orders
+//      .join(customers, "customerId")
+//      .join(genders, "genderCode")
+//      .select("genderCode", "customerId", "name", "orderId", "amount", "gender")
+
+    //TODO :: Sequence of columns in join
+    //First the join attribute, then remaining columns of left table in order (left to right) followed by right table
+    //println(customers.join(orders,"customerId").show(1))
+    //println(orders.join(customers,"customerId").show(1))
+
+
+    //println(actualDF.show())
 
     val expectedDF = Seq(
       ("M", 1, "Alex", 1, 5.0, "Male"),
@@ -46,8 +64,7 @@ class JoinTest extends SparkTest {
 
   test("all unique customers with minimum one order") {
 
-    val actualDF = spark.emptyDataFrame // Replace this with actual code to pass tests
-
+    val actualDF = customers.join(orders, "customerId").select("customerId", "name", "genderCode").distinct()
     val expectedDF = Seq(
       (1, "Alex", "M"),
       (2, "Bill", "M")
@@ -58,23 +75,25 @@ class JoinTest extends SparkTest {
 
   test("all possible customer and orders combinations") {
 
-    val actualDF = spark.emptyDataFrame // Replace this with actual code to pass tests
-
-    val expectedDF = Seq((1,"Alex","Female"),
-      (1,"Alex","Male"),
-      (1,"Alex","Other"),
-      (2,"Bill","Female"),
-      (2,"Bill","Male"),
-      (2,"Bill","Other"),
-      (3,"Steffi","Female" ),
-      (3,"Steffi","Male"),
-      (3,"Steffi","Other"),
-      (4,"Mary","Female"),
-      (4,"Mary","Male"),
-      (4,"Mary","Other"),
-      (5,"Julia","Female"),
-      (5,"Julia","Male"),
-      (5,"Julia","Other")).toDF("customerId", "name", "gender")
+    val actualDF = customers.crossJoin(genders).select("customerId", "name", "gender")
+    //filter on columns of interest and then join
+    val actualDF1 = customers.select("customerId", "name").crossJoin(genders.select("gender")) //spark.emptyDataFrame // Replace this with actual code to pass tests
+    //val actualDF2 = customers.join(genders, Seq(), Cross)
+    val expectedDF = Seq((1, "Alex", "Female"),
+      (1, "Alex", "Male"),
+      (1, "Alex", "Other"),
+      (2, "Bill", "Female"),
+      (2, "Bill", "Male"),
+      (2, "Bill", "Other"),
+      (3, "Steffi", "Female"),
+      (3, "Steffi", "Male"),
+      (3, "Steffi", "Other"),
+      (4, "Mary", "Female"),
+      (4, "Mary", "Male"),
+      (4, "Mary", "Other"),
+      (5, "Julia", "Female"),
+      (5, "Julia", "Male"),
+      (5, "Julia", "Other")).toDF("customerId", "name", "gender")
 
     checkAnswer(actualDF, expectedDF)
   }
