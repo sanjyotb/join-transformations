@@ -64,7 +64,10 @@ class JoinTest extends SparkTest {
 
   test("all unique customers with minimum one order") {
 
-    val actualDF = customers.join(orders, "customerId").select("customerId", "name", "genderCode").distinct()
+    val actualDF = customers
+      .join(orders, "customerId")
+      .select("customerId", "name", "genderCode")
+      .distinct()
     val expectedDF = Seq(
       (1, "Alex", "M"),
       (2, "Bill", "M")
